@@ -360,8 +360,8 @@ def jammer(protocol):
     else:
         success_rate = success_rate + 1
 
-    # parameters are between  3 and 6
-    success_rate = success_rate / 6 # success_rate varies from 0.5 to 1.0
+    # parameters are between  2 and 6
+    success_rate = success_rate / 6 # success_rate varies from 0.33 to 1.0
     #print(f"Success rate: {success_rate}")
     success_likelihood = random.random() < success_rate
     #print(f"Success likelihood: {success_likelihood}")
@@ -385,21 +385,15 @@ def hijacker(protocol):
     # If it is TLS the Hijacking Vulnerability is medium and the Persistence is medium
     if protocol == "TLS":
         hijacking_vulnerability = MEDIUM
-        persistence = MEDIUM
         
-
     # else if it is MLS the Hijacking Vulnerability is low and the Persistence is low
     elif protocol == "MLS":
         hijacking_vulnerability = LOW
-        persistence = LOW
         
-
     # else if it is PSK the Hijacking Vulnerability is high and the Persistence is high
     else:
         hijacking_vulnerability = HIGH
-        persistence = LOW
         
-
     # What is the Hijacking Vulnerability?
     # if it is high then the likelihood of the attack happen is high
     if hijacking_vulnerability == HIGH:
