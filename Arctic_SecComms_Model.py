@@ -7,14 +7,14 @@ and records the results of these attacks.
 
 Functions:
 - jammer(protocol): Simulates a jamming attack on the given protocol (Based on likelihood). 
-- highjacker(protocol): Simulates a hijacking attack on the given protocol (Based on likelihood).
+- hijacker(protocol): Simulates a hijacking attack on the given protocol (Based on likelihood).
 
 Global Variables:
 - mls_uhf_land_jam_result (list): Stores the results of jamming attacks.
-- mls_uhf_land_high_result (list): Stores the results of hijacking attacks.
+- mls_uhf_land_hi_result (list): Stores the results of hijacking attacks.
 
 Usage:
-- The module checks if an attack happens and calls the appropriate function (jammer or highjacker).
+- The module checks if an attack happens and calls the appropriate function (jammer or hijacker).
 - The results of the attacks are appended to the respective result lists as "Success" or "Fail".
 
 
@@ -22,12 +22,13 @@ Author:
 - Douglas Pinheiro Mazzuco
 
 Date:
-- October 8th 2024.
+- January 4th 2025.
 
 '''
 #####################################
 # Imports
 import random
+from re import M
 import pandas as pd
 import numpy as np
 import pandas as pd
@@ -41,12 +42,15 @@ MEDIUM = "Medium"
 LOW = "Low"
 NO = 0
 
+NO_ATTENUATION = 1.0
+VERY_LOW_ATTENUATION = 0.90
 LOW_ATTENUATION = 0.80
 MEDIUM_ATTENUATION = 0.60
 HIGH_ATTENUATION = 0.30
 VERY_HIGH_ATTENUATION = 0.15
 
-INITIAL_LIKELIHOOD = 0.75   # It is more likely that the attack happen in the CONOPs.
+
+INITIAL_LIKELIHOOD = 0.95   # It is more likely that the attack happen in the CONOPs.
 
 INCREMENTED = 1
 INCREASED = 2
@@ -70,39 +74,39 @@ NUMBER_OF_SIMULATIONS = 1000000 # Change to the appropriate number of simulation
 
 # Sim 1:
 # tls_hf_land_jam_result
-# tls_hf_land_high_result
+# tls_hf_land_hi_result
 
 # Sim 2:
 # tls_vhf_land_jam_result
-# tls_vhf_land_high_result
+# tls_vhf_land_hi_result
 
 # Sim 3:
 # tls_uhf_land_jam_result
-# tls_uhf_land_high_result
+# tls_uhf_land_hi_result
 
 # Sim 4:
 # mls_hf_land_jam_result
-# mls_hf_land_high_result
+# mls_hf_land_hi_result
 
 # Sim 5:
 # mls_vhf_land_jam_result
-# mls_vhf_land_high_result
+# mls_vhf_land_hi_result
 
 # Sim 6:
 # mls_uhf_land_jam_result
-# mls_uhf_land_high_result
+# mls_uhf_land_hi_result
 
 # Sim 7:
 # psk_hf_land_jam_result
-# psk_hf_land_high_result
+# psk_hf_land_hi_result
 
 # Sim 8:
 # psk_vhf_land_jam_result
-# psk_vhf_land_high_result
+# psk_vhf_land_hi_result
 
 # Sim 9:
 # psk_uhf_land_jam_result
-# psk_uhf_land_high_result
+# psk_uhf_land_hi_result
 
 ####################################################
 ####################################################
@@ -112,19 +116,19 @@ NUMBER_OF_SIMULATIONS = 1000000 # Change to the appropriate number of simulation
 
 # TLS - Transport Layer (Layer 4)
 # Jamming Vulnerability = "High"
-# Highjacking Vulnerability = "Medium"
+# Hijacking Vulnerability = "Medium"
 # RF Footprint = "High"
 # Persistence = "Medium"    - Detectability (rounds to estabilhish a connection)
 
 # MLS - Application Layer (Layer 5)
 # Jamming Vulnerability = "Low"
-# Highjacking Vulnerability = "Low"
+# Hijacking Vulnerability = "Low"
 # RF Footprint = "Medium"
 # Persistence = "Low"       - Detectability (rounds to estabilhish a connection)
 
 # PSK - Link Layer (Layer 2)
 # Jamming Vulnerability = "Low"
-# Highjacking Vulnerability = "High"
+# Hijacking Vulnerability = "High"
 # RF Footprint = "Low"
 # Persistence = "Low"       - Detectability (rounds to estabilhish a connection)
 
@@ -132,19 +136,19 @@ NUMBER_OF_SIMULATIONS = 1000000 # Change to the appropriate number of simulation
 protocols = {
     "TLS": {
         "Jamming Vulnerability": HIGH,
-        "Highjacking Vulnerability": MEDIUM,
+        "Hijacking Vulnerability": MEDIUM,
         "RF Footprint": HIGH,
         "Persistence": MEDIUM
     },
     "MLS": {
         "Jamming Vulnerability": LOW,
-        "Highjacking Vulnerability": LOW,
+        "Hijacking Vulnerability": LOW,
         "RF Footprint": MEDIUM,
         "Persistence": LOW
     },
     "PSK": {
         "Jamming Vulnerability": LOW,
-        "Highjacking Vulnerability": HIGH,
+        "Hijacking Vulnerability": HIGH,
         "RF Footprint": LOW,
         "Persistence": LOW
     }
@@ -215,7 +219,7 @@ def attenuation(frequency, environ):
 
     if environ == "Over the ice (land)":
         # INCREASED = 2
-        attenuation_score = attenuation_score + INCREASED
+        attenuation_score = attenuation_score + 4
    
     # What is the frequency?
     # if it is HF then the attenuation is high
@@ -233,23 +237,42 @@ def attenuation(frequency, environ):
         # INCREMENTED = 1
         attenuation_score = attenuation_score + INCREMENTED
 
-    # attenuation score will vary from 3 to 6
+    # attenuation score will vary from 0 to 6
     # The attenuation factor is a number between 0 and 1
+    # 0 is no attenuation
+    # 1 is a very low attenuation
+    # 2 is a low attenuation
     # 3 is a low attenuation  
     # 4 is a medium attenuation
     # 5 is a high attenuation
     # 6 is a very high attenuation
     # The attenuation factor is calculated as follows:
+    # 0 -> 1.00
+    # 1 -> 0.90
+    # 2 -> 0.80
     # 3 -> 0.80
     # 4 -> 0.60
     # 5 -> 0.30
     # 6 -> 0.15
+
+    if attenuation_score == 0:
+        return NO_ATTENUATION
+
+    if attenuation_score == 1:
+        return VERY_LOW_ATTENUATION
+
+    if attenuation_score == 2:
+        return LOW_ATTENUATION
+    
     if attenuation_score == 3:
         return LOW_ATTENUATION
+    
     elif attenuation_score == 4:
         return MEDIUM_ATTENUATION
+    
     elif attenuation_score == 5:
         return HIGH_ATTENUATION
+    
     else:
         return VERY_HIGH_ATTENUATION
 
@@ -299,29 +322,23 @@ Inputs: protocol, frequency
 Outputs: jammer status (success or fail)
 '''
 def jammer(protocol):
-
     # What is the protocol? - RF Footprint, Jamming Vulnerability and Persistence
     # Check the protocol and get the RF Footprint, Jamming Vulnerability and Persistence
-
     # If it is TLS the RF Footprint is high, the Jamming Vulnerability is high and the Persistence is medium
     if protocol == "TLS":
         rf_footprint = HIGH
         jamming_vulnerability = HIGH
-        persistence = MEDIUM
 
     # else if it is MLS the RF Footprint is medium, the Jamming Vulnerability is low and the Persistence is low
     elif protocol == "MLS":
         rf_footprint = MEDIUM
         jamming_vulnerability = LOW
-        persistence = LOW
 
     # else if it is PSK the RF Footprint is low, the Jamming Vulnerability is low and the Persistence is high
     else:
         rf_footprint = LOW
         jamming_vulnerability = LOW
-        persistence = LOW
 
-   
     # What is the RF Footprint?
     # if it is high then the likelihood of the attack happen is high
     if rf_footprint == HIGH:
@@ -332,9 +349,6 @@ def jammer(protocol):
 
     else:
         success_rate = 1
-
-    #print(f"Success rate: {success_rate}")
-
     
     # What is the Jamming Vulnerability?
     if jamming_vulnerability == HIGH:
@@ -346,18 +360,8 @@ def jammer(protocol):
     else:
         success_rate = success_rate + 1
 
-    # What is the Persistence?
-    if persistence == HIGH:
-        success_rate = success_rate + 3
-
-    elif persistence == MEDIUM:
-        success_rate = success_rate + 2
-
-    else:
-        success_rate = success_rate + 1
-
-    # parameters are between 3 and 9
-    success_rate = success_rate / 9 # success_rate varies from 0.33 to 1.0
+    # parameters are between  3 and 6
+    success_rate = success_rate / 6 # success_rate varies from 0.5 to 1.0
     #print(f"Success rate: {success_rate}")
     success_likelihood = random.random() < success_rate
     #print(f"Success likelihood: {success_likelihood}")
@@ -369,54 +373,56 @@ def jammer(protocol):
 ####################################################
 
 
-# Highjacker - Function
+# Hijacker - Function
 '''
 Inputs: protocol
-Outputs: highjacker status (success or fail)
+Outputs: hijacker status (success or fail)
 '''
 
-def highjacker(protocol):
-    # What is the protocol? - Highjacking Vulnerability and Persistence
-    # Check the protocol and get the Highjacking Vulnerability and Persistence
-    # If it is TLS the Highjacking Vulnerability is medium and the Persistence is medium
+def hijacker(protocol):
+    # What is the protocol? - Hijacking Vulnerability and Persistence
+    # Check the protocol and get the Hijacking Vulnerability and Persistence
+    # If it is TLS the Hijacking Vulnerability is medium and the Persistence is medium
     if protocol == "TLS":
-        highjacking_vulnerability = MEDIUM
+        hijacking_vulnerability = MEDIUM
         persistence = MEDIUM
+        
 
-    # else if it is MLS the Highjacking Vulnerability is low and the Persistence is low
+    # else if it is MLS the Hijacking Vulnerability is low and the Persistence is low
     elif protocol == "MLS":
-        highjacking_vulnerability = LOW
+        hijacking_vulnerability = LOW
         persistence = LOW
+        
 
-    # else if it is PSK the Highjacking Vulnerability is high and the Persistence is high
+    # else if it is PSK the Hijacking Vulnerability is high and the Persistence is high
     else:
-        highjacking_vulnerability = HIGH
+        hijacking_vulnerability = HIGH
         persistence = LOW
+        
 
-    # What is the Highjacking Vulnerability?
+    # What is the Hijacking Vulnerability?
     # if it is high then the likelihood of the attack happen is high
-    if highjacking_vulnerability == HIGH:
+    if hijacking_vulnerability == HIGH:
         success_rate = 3
 
-    elif highjacking_vulnerability == MEDIUM:
+    elif hijacking_vulnerability == MEDIUM:
         success_rate = 2
 
     else:
         success_rate = 1
 
-
     # What is the percistence?
-    if persistence == HIGH:
-        success_rate = success_rate + 3
+    #if persistence == HIGH:
+     #   success_rate = success_rate + 3
 
-    elif persistence == MEDIUM:
-        success_rate = success_rate + 2
+#    elif persistence == MEDIUM:
+#        success_rate = success_rate + 2
 
-    else:
-        success_rate = success_rate + 1
+#    else:
+ #       success_rate = success_rate + 1
 
     # parameters are between 3 and 6
-    success_rate = success_rate / 6 # success_rate varies from 0.5 to 1.0
+    success_rate = success_rate / 3 # success_rate varies from 0.5 to 1.0
     #print(f"Success rate: {success_rate}")
     success_likelihood = random.random() < success_rate
     #print(f"Success likelihood: {success_likelihood}")
@@ -469,7 +475,7 @@ frequency = "HF"
 
 # Lists to store the results
 tls_hf_land_jam_result = []
-tls_hf_land_high_result = []
+tls_hf_land_hi_result = []
 
 # Simulation loop
 for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
@@ -504,15 +510,15 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list tls_hf_land_result
-            tls_hf_land_high_result.append("Success")
+            tls_hf_land_hi_result.append("Success")
 
         else:
             # append the result "Fail" to the list tls_hf_land_result
@@ -520,22 +526,22 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     else:
         # append the result "Fail" to the list tls_hf_land_result
-        tls_hf_land_high_result.append("Fail")
+        tls_hf_land_hi_result.append("Fail")
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", tls_hf_land_jam_result)
-#print ("\nHighjacker: ", tls_hf_land_high_result)
+#print ("\nHijacker: ", tls_hf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
 num_success_jam_1 = tls_hf_land_jam_result.count("Success")
-num_success_high_1 = tls_hf_land_high_result.count("Success")
+num_success_hi_1 = tls_hf_land_hi_result.count("Success")
 final_result_jam_1 = num_success_jam_1 / NUMBER_OF_SIMULATIONS
-final_result_high_1 = num_success_high_1 / NUMBER_OF_SIMULATIONS
-# print avarege of the results - Jammer and Highjacker
+final_result_hi_1 = num_success_hi_1 / NUMBER_OF_SIMULATIONS
+# print avarege of the results - Jammer and Hijacker
 
 print ('\nJammer (TLS, Land, HF): ', final_result_jam_1)
-print ('\nHighjacker (TLS, Land, HF): ', final_result_high_1)
+print ('\nHijacker (TLS, Land, HF): ', final_result_hi_1)
 
 ####################################################
 ####################################################
@@ -565,7 +571,7 @@ frequency = "VHF"
 
 # List to store the results
 tls_vhf_land_jam_result = []
-tls_vhf_land_high_result = []
+tls_vhf_land_hi_result = []
 
 # Simulation loop
 for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
@@ -600,15 +606,15 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list tls_vhf_land_result
-            tls_vhf_land_high_result.append("Success")
+            tls_vhf_land_hi_result.append("Success")
 
         else:
             # append the result "Fail" to the list tls_vhf_land_result
@@ -616,22 +622,22 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     else:
         # append the result "Fail" to the list tls_vhf_land_result
-        tls_vhf_land_high_result.append("Fail")
+        tls_vhf_land_hi_result.append("Fail")
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", tls_vhf_land_jam_result)
-#print ("\nHighjacker: ", tls_vhf_land_high_result)
+#print ("\nHijacker: ", tls_vhf_land_hi_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
 num_success_jam_2 = tls_vhf_land_jam_result.count("Success")
-num_success_high_2 = tls_vhf_land_high_result.count("Success")
+num_success_hi_2 = tls_vhf_land_hi_result.count("Success")
 final_result_jam_2 = num_success_jam_2 / NUMBER_OF_SIMULATIONS
-final_result_high_2 = num_success_high_2 / NUMBER_OF_SIMULATIONS
-# print avantge of the results - Jammer and Highjacker
+final_result_hi_2 = num_success_hi_2 / NUMBER_OF_SIMULATIONS
+# print avantge of the results - Jammer and Hijacker
 
 print ('\nJammer (TLS, Land, VHF): ', final_result_jam_2)
-print ('\nHighjacker (TLS, Land, VHF): ', final_result_high_2)
+print ('\nHijacker (TLS, Land, VHF): ', final_result_hi_2)
 
 ####################################################
 ####################################################
@@ -663,7 +669,7 @@ frequency = "UHF"
 
 # Lists to store the results
 tls_uhf_land_jam_result = []
-tls_uhf_land_high_result = []
+tls_uhf_land_hi_result = []
 
 # Simulation loop
 for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
@@ -698,15 +704,15 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list tls_uhf_land_result
-            tls_uhf_land_high_result.append("Success")
+            tls_uhf_land_hi_result.append("Success")
 
         else:
             # append the result "Fail" to the list tls_uhf_land_result
@@ -714,21 +720,21 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     else:
         # append the result "Fail" to the list tls_uhf_land_result
-        tls_vhf_land_high_result.append("Fail")
+        tls_vhf_land_hi_result.append("Fail")
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", tls_uhf_land_jam_result)
-#print ("\nHighjacker: ", tls_uhf_land_high_result)
+#print ("\nHijacker: ", tls_uhf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
 num_success_jam_3 = tls_uhf_land_jam_result.count("Success")
-num_success_high_3 = tls_uhf_land_high_result.count("Success")
+num_success_high_3 = tls_uhf_land_hi_result.count("Success")
 final_result_jam_3 = num_success_jam_3 / NUMBER_OF_SIMULATIONS
 final_result_high_3 = num_success_high_3 / NUMBER_OF_SIMULATIONS
-# print avantge of the results - Jammer and Highjacker
+# print avantge of the results - Jammer and Hijacker
 print ('\nJammer (TLS, Land, UHF): ', final_result_jam_3)
-print ('\nHighjacker (TLS, Land, UHF): ', final_result_high_3)
+print ('\nHijacker (TLS, Land, UHF): ', final_result_high_3)
 
 
 ####################################################
@@ -802,13 +808,13 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list mls_hf_land_result
             mls_hf_land_high_result.append("Success")
 
@@ -823,7 +829,7 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", mls_hf_land_jam_result)
-#print ("\nHighjacker: ", mls_hf_land_high_result)
+#print ("\nHijacker: ", mls_hf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
@@ -831,10 +837,10 @@ num_success_jam_4 = mls_hf_land_jam_result.count("Success")
 num_success_high_4 = mls_hf_land_high_result.count("Success")
 final_result_jam_4 = num_success_jam_4 / NUMBER_OF_SIMULATIONS
 final_result_high_4 = num_success_high_4 / NUMBER_OF_SIMULATIONS
-# print avarege of the results - Jammer and Highjacker
+# print avarege of the results - Jammer and Hijacker
 
 print ('\nJammer (MLS, Land, HF): ', final_result_jam_4)
-print ('\nHighjacker (MLS, Land, HF): ', final_result_high_4)
+print ('\nHijacker (MLS, Land, HF): ', final_result_high_4)
 
 ####################################################
 ####################################################
@@ -899,13 +905,13 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list mls_vhf_land_result
             mls_vhf_land_high_result.append("Success")
 
@@ -919,7 +925,7 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", mls_vhf_land_jam_result)
-#print ("\nHighjacker: ", mls_vhf_land_high_result)
+#print ("\nHijacker: ", mls_vhf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
@@ -927,10 +933,10 @@ num_success_jam_5 = mls_vhf_land_jam_result.count("Success")
 num_success_high_5 = mls_vhf_land_high_result.count("Success")
 final_result_jam_5 = num_success_jam_5 / NUMBER_OF_SIMULATIONS
 final_result_high_5 = num_success_high_5 / NUMBER_OF_SIMULATIONS
-# print avarege of the results - Jammer and Highjacker
+# print avarege of the results - Jammer and Hijacker
 
 print ('\nJammer (MLS, Land, VHF): ', final_result_jam_5)
-print ('\nHighjacker (MLS, Land, VHF): ', final_result_high_5)
+print ('\nHijacker (MLS, Land, VHF): ', final_result_high_5)
 
 ####################################################
 ####################################################
@@ -996,13 +1002,13 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list mls_uhf_land_result
             mls_uhf_land_high_result.append("Success")
 
@@ -1016,7 +1022,7 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", mls_uhf_land_jam_result)
-#print ("\nHighjacker: ", mls_uhf_land_high_result)
+#print ("\nHijacker: ", mls_uhf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
@@ -1024,9 +1030,9 @@ num_success_jam_6 = mls_uhf_land_jam_result.count("Success")
 num_success_high_6 = mls_uhf_land_high_result.count("Success")
 final_result_jam_6 = num_success_jam_6 / NUMBER_OF_SIMULATIONS
 final_result_high_6 = num_success_high_6 / NUMBER_OF_SIMULATIONS
-# print avantge of the results - Jammer and Highjacker
+# print avantge of the results - Jammer and Hijacker
 print ('\nJammer (MLS, Land, UHF): ', final_result_jam_6)
-print ('\nHighjacker (MLS, Land, UHF): ', final_result_high_6)
+print ('\nHijacker (MLS, Land, UHF): ', final_result_high_6)
 
 
 ####################################################
@@ -1100,13 +1106,13 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list psk_hf_land_result
             psk_hf_land_high_result.append("Success")
 
@@ -1120,7 +1126,7 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", psk_hf_land_jam_result)
-#print ("\nHighjacker: ", psk_hf_land_high_result)
+#print ("\nHijacker: ", psk_hf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
@@ -1128,10 +1134,10 @@ num_success_jam_7 = psk_hf_land_jam_result.count("Success")
 num_success_high_7 = psk_hf_land_high_result.count("Success")
 final_result_jam_7 = num_success_jam_7 / NUMBER_OF_SIMULATIONS
 final_result_high_7 = num_success_high_7 / NUMBER_OF_SIMULATIONS
-# print avarege of the results - Jammer and Highjacker
+# print avarege of the results - Jammer and Hijacker
 
 print ('\nJammer (PSK, Land, HF): ', final_result_jam_7)
-print ('\nHighjacker (PSK, Land, HF): ', final_result_high_7)
+print ('\nHijacker (PSK, Land, HF): ', final_result_high_7)
 
 ####################################################
 ####################################################
@@ -1196,13 +1202,13 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list psk_vhf_land_result
             psk_vhf_land_high_result.append("Success")
 
@@ -1216,7 +1222,7 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", psk_vhf_land_jam_result)
-#print ("\nHighjacker: ", psk_vhf_land_high_result)
+#print ("\nHijacker: ", psk_vhf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
@@ -1224,10 +1230,10 @@ num_success_jam_8 = psk_vhf_land_jam_result.count("Success")
 num_success_high_8 = psk_vhf_land_high_result.count("Success")
 final_result_jam_8 = num_success_jam_8 / NUMBER_OF_SIMULATIONS
 final_result_high_8 = num_success_high_8 / NUMBER_OF_SIMULATIONS
-# print avantge of the results - Jammer and Highjacker
+# print avantge of the results - Jammer and Hijacker
 
 print ('\nJammer (PSK, Land, VHF): ', final_result_jam_8)
-print ('\nHighjacker (PSK, Land, VHF): ', final_result_high_8)
+print ('\nHijacker (PSK, Land, VHF): ', final_result_high_8)
 
 ####################################################
 ####################################################
@@ -1293,13 +1299,13 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
     ####################################################
 
-    # if attackhappen call now the function highjacker
+    # if attackhappen call now the function hijacker
     
     if attack_happen:
-        highjack = highjacker(protocol)
+        hijack = hijacker(protocol)
         
-        # Check if the Highjacker was successful
-        if highjack:
+        # Check if the Hijacker was successful
+        if hijack:
             # append the result "Success" to the list psk_uhf_land_result
             psk_uhf_land_high_result.append("Success")
 
@@ -1313,7 +1319,7 @@ for attack in range(1, NUMBER_OF_SIMULATIONS + 1):
 
 #print ("\nResults: \n")
 #print ("\nJammer: ", tls_uhf_land_jam_result)
-#print ("\nHighjacker: ", tls_uhf_land_high_result)
+#print ("\nHijacker: ", tls_uhf_land_high_result)
 print ("\nResults recorded\n")
 
 # Avarege of the results - Number of Success / Number of Simulations
@@ -1321,9 +1327,9 @@ num_success_jam_9 = psk_uhf_land_jam_result.count("Success")
 num_success_high_9 = psk_uhf_land_high_result.count("Success")
 final_result_jam_9 = num_success_jam_9 / NUMBER_OF_SIMULATIONS
 final_result_high_9 = num_success_high_9 / NUMBER_OF_SIMULATIONS
-# print avantge of the results - Jammer and Highjacker
+# print avantge of the results - Jammer and Hijacker
 print ('\nJammer (PSK, Land, UHF): ', final_result_jam_9)
-print ('\nHighjacker (PSK, Land, UHF): ', final_result_high_9)
+print ('\nHijacker (PSK, Land, UHF): ', final_result_high_9)
 
 
 ##################################################################
@@ -1349,8 +1355,8 @@ data = {
         final_result_jam_4, final_result_jam_5, final_result_jam_6, 
         final_result_jam_7, final_result_jam_8,final_result_jam_9
     ],
-    'Highjacking': [
-        final_result_high_1, final_result_high_2, final_result_high_3,
+    'Hijacking': [
+        final_result_hi_1, final_result_hi_2, final_result_high_3,
         final_result_high_4, final_result_high_5, final_result_high_6,
         final_result_high_7, final_result_high_8,final_result_high_9
     ]
@@ -1370,13 +1376,13 @@ print ("\n\nThe previous results presented the following:\n")
 
 print("The best jamming resilience was achieved by MLS and PSK\n")
 print("The resilience results for jamming for TLS were not good\n\n")
-print("The best highjacking resilience was achieved by MLS\n")
-print ("The worst highjacking resilience was achieved by PSK\n")
+print("The best hijacking resilience was achieved by MLS\n")
+print ("The worst hijacking resilience was achieved by PSK\n")
 
 
 # Plot with bar graph
 fig, ax = plt.subplots(figsize=(10, 6))
-df.plot(x='Simulation', y=['Jamming', 'Highjacking'], kind='bar', ax=ax)
+df.plot(x='Simulation', y=['Jamming', 'Hijacking'], kind='bar', ax=ax)
 
 # Custom y-axis labels for vulnerability levels
 ax.set_yticks([])
@@ -1384,7 +1390,7 @@ ax.set_yticklabels('')
 ax.set_ylabel('Vulnerability', fontsize=18)
 
 # Title and format x-axis labels horizontally
-plt.title('Jamming and Highjacking Vulnerability', fontsize=20)
+plt.title('Jamming and Hijacking Vulnerability', fontsize=20)
 plt.xticks(rotation=0,fontsize=12)
 ax.set_xlabel('Simulation', fontsize=18)
 plt.show()
