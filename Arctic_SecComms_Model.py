@@ -303,7 +303,7 @@ def is_attack_happen(attenuation_factor, protocol):
     else:
         persistence_score = 0.1
 
-    att = attenuation_factor
+    att = 1 - attenuation_factor
     likelihood = (INITIAL_LIKELIHOOD * att) + persistence_score
     #print(f"Likelihood: {likelihood}")
 
