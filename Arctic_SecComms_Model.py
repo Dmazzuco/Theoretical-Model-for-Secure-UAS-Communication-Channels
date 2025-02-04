@@ -50,7 +50,7 @@ HIGH_ATTENUATION = 0.30
 VERY_HIGH_ATTENUATION = 0.15
 
 
-INITIAL_LIKELIHOOD = 0.95   # It is more likely that the attack happen in the CONOPs.
+INITIAL_LIKELIHOOD = 0.75   # It is more likely that the attack happen in the CONOPs.
 
 INCREMENTED = 1
 INCREASED = 2
@@ -197,7 +197,7 @@ frequencies = {
 
 
 environments = {
-    "Over the ice (land)": MEDIUM
+    "Over the ice (land)": HIGH
 }
 
 ####################################################
@@ -1384,9 +1384,9 @@ ax.set_yticklabels('')
 ax.set_ylabel('Vulnerability', fontsize=18)
 
 # Title and format x-axis labels horizontally
-plt.title('Jamming and Hijacking Vulnerability', fontsize=20)
+#plt.title('Jamming and Hijacking Vulnerability', fontsize=20)
 plt.xticks(rotation=0,fontsize=12)
-ax.set_xlabel('Simulation', fontsize=18)
+ax.set_xlabel('Simulated protocol combination', fontsize=18)
 plt.show()
 
 
